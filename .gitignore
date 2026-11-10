@@ -1,0 +1,13 @@
+.pio/
+.vscode/
+.idea/
+dist/
+*.exe
+*.bin
+*.elf
+*.map
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.pdb
