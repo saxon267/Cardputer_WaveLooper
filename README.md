@@ -76,7 +76,7 @@ pio run -t upload       # USB-C 烧写（按住 BOOT 进下载模式）
 pio device monitor      # 115200
 ```
 
-产物：`firmware/.pio/build/cardputer_wavelooper/firmware.bin`（以及 `firmware.factory.bin` 合并镜像）。
+产物：`firmware/.pio/build/cardputer_wavelooper/firmware.bin`（app）与 `firmware.factory.bin`（合并镜像）；v0.1.1 的固定快照已放在仓库根目录，见「直接烧写」。
 
 ### 主机侧引擎测试
 
@@ -89,6 +89,21 @@ python -m ziglang c++ -std=c++17 -O2 -I src test/host/test_engine.cpp src/loop_a
 ```
 
 覆盖：BPM/BARS 与容量、ADPCM 误差、录音/自动收尾、分层混音、静音、撤销、部分 take、count-in、层满/清空。
+
+### 直接烧写（根目录镜像）
+
+仓库根目录放了 v0.1.1 的构建产物，校验和见 [SHA256SUMS.txt](SHA256SUMS.txt)：
+
+| 文件 | 用途 | 烧写地址 |
+|---|---|---|
+| `CardputerWaveLooper-8MB-0.1.1.bin` | 合并镜像（bootloader + 分区表 + app），M5Burner / esptool | `0x0` |
+| `CardputerWaveLooper-0.1.1-app.bin` | 仅 app，给 Launcher 或已有 bootloader 的机器 | `0x10000` |
+
+```bash
+esptool.py --chip esp32s3 -p COMx -b 460800 write_flash 0x0 CardputerWaveLooper-8MB-0.1.1.bin
+```
+
+烧完断电重开；USB-C 接 PC/手机后，系统里应出现一个 “Speakers (…)”。根目录这两份是 v0.1.1 的固定快照，重新构建只会更新 `firmware/.pio/build/`。
 
 ## 4. 内存与容量
 
