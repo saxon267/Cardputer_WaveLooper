@@ -1,2 +1,1 @@
-268d8f7f251811dfbed09a9787ee37a8ae32a7fd2b9c3e44ff4212a193573e31  CardputerWaveLooper-8MB-0.1.1.bin
 c8c4e0e217ff162e6b498a12916b4e580a751e08cc27f23ba6500e12ba88fc7e  CardputerWaveLooper-0.1.1-app.bin
