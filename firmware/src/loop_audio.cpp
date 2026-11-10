@@ -390,6 +390,45 @@ bool LoopEngine::undo()
     return true;
 }
 
+bool LoopEngine::clearLayer(uint8_t layer)
+{
+    if (layer >= MAX_LAYERS) return false;
+
+    // Clearing the track that is currently armed/recording cancels that take.
+    if (_recLayer == layer &&
+        (_state == LoopState::REC || _state == LoopState::ARMED)) {
+        if (_state == LoopState::ARMED) {
+            _state = LoopState::STOP;
+            _phaseBlock = 0;
+            _firstTake = false;
+        } else {
+            cancelRecord();
+        }
+        return true;
+    }
+
+    if (!_layer[layer].used) return false;
+
+    _layer[layer].used = false;
+    _layer[layer].muted = false;
+    _layer[layer].validBlocks = 0;
+    _layer[layer].peak = 0;
+
+    // Drop it from the undo order as well.
+    int w = 0;
+    for (int i = 0; i < _orderN; ++i) {
+        if (_order[i] != layer) _order[w++] = _order[i];
+    }
+    _orderN = (uint8_t)w;
+
+    if (_usedCount > 0) --_usedCount;
+    if (_usedCount == 0) {
+        _state = LoopState::STOP;
+        _phaseBlock = 0;
+    }
+    return true;
+}
+
 bool LoopEngine::toggleMute(uint8_t layer)
 {
     if (layer >= MAX_LAYERS || !_layer[layer].used) return false;
@@ -471,9 +510,12 @@ void LoopEngine::process(const int16_t* in, int16_t* out, int n)
     }
 
     // Transport commands from the UI task, executed at a block boundary.
-    const uint8_t req = _req.exchange(0);
+    const uint16_t req = _req.exchange(0);
     if (req & REQ_STOP_REC) stopRec();
     if (req & REQ_STOP) stop();
+    for (int i = 0; i < MAX_LAYERS; ++i) {
+        if (req & (REQ_CLEAR_L0 << i)) clearLayer((uint8_t)i);
+    }
     if (req & REQ_CLEAR) clear();
     if (req & REQ_UNDO) undo();
     if (req & REQ_PLAY) play();

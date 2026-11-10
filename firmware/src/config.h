@@ -35,7 +35,7 @@ static constexpr int ADPCM_BYTES   = 124;       // 4-byte header + 120 bytes pay
 // ---------------------------------------------------------------- files
 static constexpr int MAX_FILES = 64;
 #define LOOP_DIR "/WaveLoop"
-#define APP_VERSION "0.1.0"
+#define APP_VERSION "0.1.1"
 
 // ---------------------------------------------------------------- layout
 static constexpr int SCR_W = 240;

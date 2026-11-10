@@ -7,13 +7,18 @@ enum class LoopState : uint8_t { STOP, ARMED, REC, PLAY };
 
 // Transport commands are posted by the UI task and executed by the audio task
 // at a block boundary, so the two never mutate the engine state concurrently.
-enum : uint8_t {
-    REQ_START    = 1 << 0,
-    REQ_STOP_REC = 1 << 1,
-    REQ_PLAY     = 1 << 2,
-    REQ_STOP     = 1 << 3,
-    REQ_CLEAR    = 1 << 4,
-    REQ_UNDO     = 1 << 5,
+enum : uint16_t {
+    REQ_START    = 1u << 0,
+    REQ_STOP_REC = 1u << 1,
+    REQ_PLAY     = 1u << 2,
+    REQ_STOP     = 1u << 3,
+    REQ_CLEAR    = 1u << 4,
+    REQ_UNDO     = 1u << 5,
+    // One bit per layer: Fn+C clears only the selected track.
+    REQ_CLEAR_L0 = 1u << 6,
+    REQ_CLEAR_L1 = 1u << 7,
+    REQ_CLEAR_L2 = 1u << 8,
+    REQ_CLEAR_L3 = 1u << 9,
 };
 
 // Sample-domain looper: 4 layers of the same length, IMA ADPCM 4-bit storage.
@@ -37,12 +42,13 @@ public:
     void stop();
     void clear();
     bool undo();
+    bool clearLayer(uint8_t layer);
     bool toggleMute(uint8_t layer);
 
     // Thread-safe transport for the firmware: post a command, execute it from
     // process() at the next block boundary.
-    void request(uint8_t mask) { _req.fetch_or(mask); }
-    bool pending(uint8_t mask) const { return (_req.load() & mask) != 0; }
+    void request(uint16_t mask) { _req.fetch_or(mask); }
+    bool pending(uint16_t mask) const { return (_req.load() & mask) != 0; }
 
     // Audio task: exactly ENGINE_BLOCK samples in, same count out.
     void process(const int16_t* in, int16_t* out, int n);
@@ -130,7 +136,7 @@ private:
     bool _autoArm = false;
     bool _invalid = false;
     LoopState _state = LoopState::STOP;
-    std::atomic<uint8_t> _req{0};
+    std::atomic<uint16_t> _req{0};
 
     int16_t _accent[768] = {0};
     int16_t _normal[768] = {0};

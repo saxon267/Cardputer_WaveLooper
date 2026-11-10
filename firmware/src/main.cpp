@@ -27,7 +27,7 @@ static void setToast(const char* msg)
     app.toastUntil = millis() + 1800;
 }
 
-static void requestSync(uint8_t mask)
+static void requestSync(uint16_t mask)
 {
     looper.request(mask);
     const uint32_t t0 = millis();
@@ -112,6 +112,22 @@ static void clearLoop()
 {
     requestSync(REQ_STOP_REC | REQ_CLEAR);
     setToast("CLEARED");
+}
+
+static void clearSelectedLayer()
+{
+    const uint8_t lane = app.selectedLane;
+    const bool recording = (looper.state() == LoopState::REC ||
+                            looper.state() == LoopState::ARMED) &&
+                           looper.recLayer() == lane;
+    if (!looper.layerUsed(lane) && !recording) {
+        setToast("NO TAKE");
+        return;
+    }
+    looper.request((uint16_t)(REQ_CLEAR_L0 << lane));
+    char b[16];
+    snprintf(b, sizeof(b), "L%d CLEARED", (int)lane + 1);
+    setToast(b);
 }
 
 static void toggleLaneMute(uint8_t lane)
@@ -351,7 +367,7 @@ static void handleKeys()
     const bool skey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('s');
     const bool mkey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('m');
     const bool gkey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('g');
-    const bool ckey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('c');
+    const bool ckey  = M5Cardputer.Keyboard.isKeyPressed('c');
     const bool dkey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('d');
     const bool nkey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('n');
     const bool ukey  = !ks.fn && M5Cardputer.Keyboard.isKeyPressed('u');
@@ -465,7 +481,10 @@ static void handleKeys()
         if (eR || eSpace) toggleRecord();
         if (eEnter) togglePlay();
         if (eS) saveLoop();
-        if (eC) clearLoop();
+        if (eC) {
+            if (ks.fn) clearSelectedLayer();
+            else       clearLoop();
+        }
         if (eM) toggleClick();
         if (eL) toggleLoopMode();
         if (eU) {

@@ -235,6 +235,70 @@ static void testPartialTake()
     CHECK(lastMax < 9000);
 }
 
+static void testClearLayer()
+{
+    LoopEngine e;
+    e.begin(g_pool, POOL_BYTES);
+    e.setClick(false);
+    e.setCountIn(false);
+
+    int16_t in[ENGINE_BLOCK];
+    int16_t out[ENGINE_BLOCK];
+
+    // Three layers: DC 1000, 2000, 3000.
+    for (int l = 0; l < 3; ++l) {
+        CHECK(e.startRec());
+        for (uint32_t b = 0; b < e.loopBlocks(); ++b) {
+            dcBlock(in, (int16_t)(1000 * (l + 1)));
+            e.process(in, out, ENGINE_BLOCK);
+        }
+        CHECK(e.layersUsed() == (uint8_t)(l + 1));
+    }
+
+    // Fn+C on layer 2: only that layer disappears.
+    CHECK(e.clearLayer(1));
+    CHECK(!e.layerUsed(1));
+    CHECK(e.layersUsed() == 2);
+    e.play();
+    for (uint32_t b = 0; b < e.loopBlocks(); ++b) {
+        memset(in, 0, sizeof(in));
+        e.process(in, out, ENGINE_BLOCK);
+    }
+    CHECK(out[0] > 3800 && out[0] < 4200);   // 1000 + 3000
+
+    // Clearing an unused layer is a no-op.
+    CHECK(!e.clearLayer(1));
+
+    // Undo still removes the most recent take (layer 3).
+    CHECK(e.undo());
+    CHECK(e.layersUsed() == 1);
+    e.play();
+    for (uint32_t b = 0; b < e.loopBlocks(); ++b) {
+        memset(in, 0, sizeof(in));
+        e.process(in, out, ENGINE_BLOCK);
+    }
+    CHECK(out[0] > 900 && out[0] < 1100);    // only layer 1
+
+    // Clearing the layer that is being recorded cancels the take.
+    CHECK(e.startRec());
+    for (int b = 0; b < 10; ++b) {
+        dcBlock(in, 500);
+        e.process(in, out, ENGINE_BLOCK);
+    }
+    CHECK(e.clearLayer(1));
+    CHECK(!e.layerUsed(1));
+    CHECK(e.layersUsed() == 1);
+
+    // Clearing the armed first take cancels the arm.
+    e.clear();
+    e.setCountIn(true);
+    CHECK(e.startRec());
+    CHECK(e.state() == LoopState::ARMED);
+    CHECK(e.clearLayer(e.recLayer()));
+    CHECK(e.state() == LoopState::STOP);
+    CHECK(e.layersUsed() == 0);
+}
+
 static void testCountIn()
 {
     LoopEngine e;
@@ -306,6 +370,7 @@ int main()
     testRecordPlayback();
     testLayers();
     testPartialTake();
+    testClearLayer();
     testCountIn();
     testClearAndLayerCapacity();
 
